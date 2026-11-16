@@ -1,0 +1,77 @@
+service:
+  name: aac-kea
+  friendly_name: Kea DHCP DB
+  description: Global Kea DHCP database (host reservations + leases), managed by Stork
+  category: DNS - DHCP
+  icon: mdi-database-outline
+  stage: prod
+  hostname: kea-db
+  image_repo: mariadb
+  image_tag: '11.4'
+config:
+  schema_version: 2
+  domain_name: example.com
+  generate_hostname: false
+  integrations:
+    homepage:
+      enabled: false
+    autodns:
+      enabled: false
+    traefik:
+      enabled: false
+vars:
+  TZ: Europe/Berlin
+  KEA_DB_NAME: kea
+  KEA_DB_USER: kea
+secrets:
+  MYSQL_ROOT_PASSWORD: CHANGE_ME
+  KEA_DB_PASSWORD: CHANGE_ME
+deployments:
+  docker_compose:
+    restart_policy: always
+    host_base_path: /export/docker
+    security_opt:
+    - apparmor:unconfined
+    environment:
+      MYSQL_ROOT_PASSWORD: '{{ secrets.MYSQL_ROOT_PASSWORD }}'
+      MYSQL_DATABASE: '{{ vars.KEA_DB_NAME }}'
+      MYSQL_USER: '{{ vars.KEA_DB_USER }}'
+      MYSQL_PASSWORD: '{{ secrets.KEA_DB_PASSWORD }}'
+      TZ: '{{ vars.TZ }}'
+    volumes:
+    - db:/var/lib/mysql
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - mariadb-admin ping -h localhost --silent || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+ports:
+- name: mysql
+  port: 3306
+  external_port: 3333
+  protocol: TCP
+volumes:
+  db:
+    description: Global Kea DHCP database (host reservations + leases)
+deployment_strategy:
+  main:
+    enabled: true
+    target_stage: prod
+  dev:
+    enabled: true
+    target_stage: dev
+  test:
+    enabled: false
+    target_stage: test
+  ansible-dev:
+    enabled: true
+    target_stage: dev
+  iac-dev:
+    enabled: true
+    target_stage: dev
+  template-dev:
+    enabled: true
+    target_stage: dev
